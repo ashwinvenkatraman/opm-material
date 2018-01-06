@@ -243,6 +243,17 @@ public:
                                              Scalar /*maxOilSaturation*/) const
     { return 0.0; /* this is dead oil! */ }
 
+    //sogo
+    template <class Evaluation>
+    Evaluation saturatedGasDissolutionFactor_Pc(unsigned regionIdx,
+                                                const Evaluation& temperature,
+                                                const Evaluation& pressure1,
+                                                const Evaluation& pressure2,
+                                                const Evaluation& oilSaturation,
+                                                Scalar maxOilSaturation) const
+    { return 0; }
+
+    
     /*!
      * \brief Returns the saturation pressure of the oil phase [Pa]
      *        depending on its mass fraction of the gas component

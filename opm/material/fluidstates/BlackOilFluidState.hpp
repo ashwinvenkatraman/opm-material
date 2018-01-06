@@ -225,6 +225,10 @@ public:
     void setRs(const Scalar& newRs)
     { Rs_ = newRs; }
 
+    //sogo
+    void setRs1(const Scalar& newRs)
+    { Rs1_ = newRs; }
+
     /*!
      * \brief Set the oil vaporization factor [m^3/m^3] of the gas phase.
      *
@@ -276,6 +280,10 @@ public:
      */
     const Scalar& Rs() const
     { return Rs_; }
+
+    //sogo
+    const Scalar& Rs1() const
+    { return Rs1_; }
 
     /*!
      * \brief Return the oil vaporization factor of gas [m^3/m^3].
@@ -478,6 +486,8 @@ private:
     std::array<Scalar, numPhases> invB_;
     std::array<Scalar, numPhases> density_;
     Scalar Rs_;
+    //sogo
+    Scalar Rs1_;
     Scalar Rv_;
     unsigned short pvtRegionIdx_;
 };

@@ -1013,7 +1013,33 @@ public:
         }
     }
 
-    /*!
+    //sogo
+    template <class FluidState, class LhsEval = typename FluidState::Scalar>
+    static LhsEval saturatedDissolutionFactor_Pc(const FluidState& fluidState,
+                                              unsigned phaseIdx1,
+                                              unsigned phaseIdx2,
+                                              unsigned regionIdx,
+                                              Scalar maxOilSaturation)
+    {
+        assert(0 <= phaseIdx1 && phaseIdx1 <= numPhases);
+        assert(0 <= phaseIdx2 && phaseIdx2 <= numPhases);
+        assert(0 <= regionIdx && regionIdx <= numRegions());
+
+        const auto& p1 = Opm::decay<LhsEval>(fluidState.pressure(phaseIdx1));
+        const auto& p2 = Opm::decay<LhsEval>(fluidState.pressure(phaseIdx2));
+        const auto& T = Opm::decay<LhsEval>(fluidState.temperature(phaseIdx1));
+        const auto& So = Opm::decay<LhsEval>(fluidState.saturation(oilPhaseIdx));
+
+        switch (phaseIdx1) {
+            case oilPhaseIdx: return oilPvt_->saturatedGasDissolutionFactor_Pc(regionIdx, T, p1, p2, So, maxOilSaturation);
+            case gasPhaseIdx: return gasPvt_->saturatedOilVaporizationFactor(regionIdx, T, p1, So, maxOilSaturation);
+            case waterPhaseIdx: return 0.0;
+            default: OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx1);
+        }
+    }
+
+
+        /*!
      * \brief Returns the dissolution factor \f$R_\alpha\f$ of a saturated fluid phase
      *
      * For the oil (gas) phase, this means the R_s and R_v factors, for the water phase,

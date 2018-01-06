@@ -68,6 +68,9 @@ public:
         const auto& densityKeyword = deck.getKeyword("DENSITY");
 
         assert(pvtoTables.size() == densityKeyword.size());
+        
+        //sogo
+        const auto& pvto1Tables = eclState.getTableManager().getPvto1Tables();
 
         size_t numRegions = pvtoTables.size();
         setNumRegions(numRegions);
@@ -86,6 +89,10 @@ public:
 
             const auto& saturatedTable = pvtoTable.getSaturatedTable();
             assert(saturatedTable.numRows() > 1);
+            
+            //sogo
+            const auto& pvto1Table = pvto1Tables[regionIdx];
+            const auto& saturatedTable1 = pvto1Table.getSaturatedTable();
 
             auto& oilMu = oilMuTable_[regionIdx];
             auto& satOilMu = saturatedOilMuTable_[regionIdx];
@@ -94,6 +101,9 @@ public:
             auto& gasDissolutionFac = saturatedGasDissolutionFactorTable_[regionIdx];
             std::vector<Scalar> invSatOilBArray;
             std::vector<Scalar> satOilMuArray;
+            
+            //sogo
+            auto& gasDissolutionFac_Pc = saturatedGasDissolutionFactorTable_Pc_[regionIdx];
 
             // extract the table for the gas dissolution and the oil formation volume factors
             for (unsigned outerIdx = 0; outerIdx < saturatedTable.numRows(); ++ outerIdx) {
@@ -121,6 +131,28 @@ public:
                     oilMu.appendSamplePoint(outerIdx, po, muo);
                 }
             }
+            
+            //sogo
+            for (unsigned Idx1 = 0; Idx1 < saturatedTable1.numRows(); ++ Idx1) {
+           
+                const auto& rsTable = pvto1Table.getRsTable(Idx1);
+
+                unsigned Idx2 = 0;
+                Scalar po = rsTable.get("P", Idx2);
+                Scalar rs1 = rsTable.get("RS1", Idx2);
+                Scalar rs2 = rsTable.get("RS2", Idx2);
+                Scalar rs3 = rsTable.get("RS3", Idx2);
+                
+                gasDissolutionFac_Pc.appendXPos(po);
+                //10, 20, 30 psi
+                double conv = 6894.76;
+                //eventually these pc must be read from the input file
+                gasDissolutionFac_Pc.appendSamplePoint(Idx1, 0.*conv, rs1);
+                gasDissolutionFac_Pc.appendSamplePoint(Idx1, 2.5*conv, rs2);
+                gasDissolutionFac_Pc.appendSamplePoint(Idx1, 5.*conv, rs3);
+                
+            }
+
 
             // update the tables for the formation volume factor and for the gas
             // dissolution factor of saturated oil
@@ -243,6 +275,9 @@ public:
         saturatedOilMuTable_.resize(numRegions);
         saturatedGasDissolutionFactorTable_.resize(numRegions);
         saturationPressure_.resize(numRegions);
+        
+        //sogo
+        saturatedGasDissolutionFactorTable_Pc_.resize(numRegions);
     }
 
     /*!
@@ -514,6 +549,31 @@ public:
 
         return tmp;
     }
+    
+    //sogo
+    template <class Evaluation>
+    Evaluation saturatedGasDissolutionFactor_Pc(unsigned regionIdx,
+                                                const Evaluation& /*temperature*/,
+                                                const Evaluation& pressure1,
+                                                const Evaluation& pressure2,
+                                                const Evaluation& oilSaturation,
+                                                Scalar maxOilSaturation) const
+    {
+        Evaluation Pc = pressure2-pressure1;
+        Evaluation tmp =
+        saturatedGasDissolutionFactorTable_Pc_[regionIdx].eval(pressure1, Pc , /*extrapolate=*/true);
+        
+        // apply the vaporization parameters for the gas phase (cf. the Eclipse VAPPARS
+        // keyword)
+        maxOilSaturation = std::min(maxOilSaturation, Scalar(1.0));
+        if (vapPar2_ > 0.0 && maxOilSaturation > 0.01 && oilSaturation < maxOilSaturation) {
+            static const Scalar eps = 0.001;
+            const Evaluation& So = Opm::max(oilSaturation, eps);
+            tmp *= Opm::max(1e-3, Opm::pow(So/maxOilSaturation, vapPar2_));
+        }
+        
+        return tmp;
+    }
 
     /*!
      * \brief Returns the saturation pressure of the oil phase [Pa]
@@ -615,6 +675,9 @@ private:
     std::vector<TabulatedOneDFunction> inverseSaturatedOilBMuTable_;
     std::vector<TabulatedOneDFunction> saturatedGasDissolutionFactorTable_;
     std::vector<TabulatedOneDFunction> saturationPressure_;
+    
+    //sogo
+    std::vector<TabulatedTwoDFunction> saturatedGasDissolutionFactorTable_Pc_;
 
     Scalar vapPar2_;
 };

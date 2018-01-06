@@ -218,6 +218,17 @@ public:
                                              Scalar maxOilSaturation) const
     { OPM_OIL_PVT_MULTIPLEXER_CALL(return pvtImpl.saturatedGasDissolutionFactor(regionIdx, temperature, pressure, oilSaturation, maxOilSaturation)); return 0; }
 
+    //sogo
+    template <class Evaluation>
+    Evaluation saturatedGasDissolutionFactor_Pc(unsigned regionIdx,
+                                                const Evaluation& temperature,
+                                                const Evaluation& pressure1,
+                                                const Evaluation& pressure2,
+                                                const Evaluation& oilSaturation,
+                                                Scalar maxOilSaturation) const
+    { OPM_OIL_PVT_MULTIPLEXER_CALL(return pvtImpl.saturatedGasDissolutionFactor_Pc(regionIdx, temperature, pressure1, pressure2, oilSaturation, maxOilSaturation)); return 0; }
+
+    
     /*!
      * \brief Returns the saturation pressure [Pa] of oil given the mass fraction of the
      *        gas component in the oil phase.
