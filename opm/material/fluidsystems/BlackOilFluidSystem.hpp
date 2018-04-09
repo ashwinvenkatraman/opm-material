@@ -35,10 +35,9 @@
 #include <opm/material/Constants.hpp>
 
 #include <opm/material/common/MathToolbox.hpp>
-#include <opm/common/Valgrind.hpp>
+#include <opm/material/common/Valgrind.hpp>
 #include <opm/material/common/HasMemberGeneratorMacros.hpp>
-#include <opm/common/Exceptions.hpp>
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/material/common/Exceptions.hpp>
 
 #include <memory>
 #include <vector>
@@ -49,7 +48,7 @@ namespace BlackOil {
 OPM_GENERATE_HAS_MEMBER(Rs, ) // Creates 'HasMember_Rs<T>'.
 OPM_GENERATE_HAS_MEMBER(Rv, ) // Creates 'HasMember_Rv<T>'.
 
-template <class FluidSystem, class LhsEval, class FluidState>
+template <class FluidSystem, class FluidState, class LhsEval>
 LhsEval getRs_(typename std::enable_if<!HasMember_Rs<FluidState>::value, const FluidState&>::type fluidState,
                unsigned regionIdx)
 {
@@ -59,16 +58,13 @@ LhsEval getRs_(typename std::enable_if<!HasMember_Rs<FluidState>::value, const F
     return FluidSystem::convertXoGToRs(XoG, regionIdx);
 }
 
-template <class FluidSystem, class LhsEval, class FluidState>
+template <class FluidSystem, class FluidState, class LhsEval>
 auto getRs_(typename std::enable_if<HasMember_Rs<FluidState>::value, const FluidState&>::type fluidState,
             unsigned regionIdx OPM_UNUSED)
-    -> decltype(Opm::MathToolbox<typename FluidState::Scalar>
-                ::template decay<LhsEval>(fluidState.Rs()))
-{
-    return Opm::decay<LhsEval>(fluidState.Rs());
-}
+    -> decltype(Opm::decay<LhsEval>(fluidState.Rs()))
+{ return Opm::decay<LhsEval>(fluidState.Rs()); }
 
-template <class FluidSystem, class LhsEval, class FluidState>
+template <class FluidSystem, class FluidState, class LhsEval>
 LhsEval getRv_(typename std::enable_if<!HasMember_Rv<FluidState>::value, const FluidState&>::type fluidState,
                unsigned regionIdx)
 {
@@ -78,14 +74,12 @@ LhsEval getRv_(typename std::enable_if<!HasMember_Rv<FluidState>::value, const F
     return FluidSystem::convertXgOToRv(XgO, regionIdx);
 }
 
-template <class FluidSystem, class LhsEval, class FluidState>
+template <class FluidSystem, class FluidState, class LhsEval>
 auto getRv_(typename std::enable_if<HasMember_Rv<FluidState>::value, const FluidState&>::type fluidState,
             unsigned regionIdx OPM_UNUSED)
-    -> decltype(Opm::MathToolbox<typename FluidState::Scalar>
-                ::template decay<LhsEval>(fluidState.Rv()))
-{
-    return Opm::decay<LhsEval>(fluidState.Rv());
-}
+    -> decltype(Opm::decay<LhsEval>(fluidState.Rv()))
+{ return Opm::decay<LhsEval>(fluidState.Rv()); }
+
 }
 
 namespace FluidSystems {
@@ -167,7 +161,7 @@ public:
     /****************************************
      * Initialization
      ****************************************/
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /*!
      * \brief Initialize the fluid system using an ECL deck object
      */
@@ -239,7 +233,7 @@ public:
 
         initEnd();
     }
-#endif // HAVE_OPM_PARSER
+#endif // HAVE_ECL_INPUT
 
     /*!
      * \brief Begin the initialization of the black oil fluid system.
@@ -558,7 +552,7 @@ public:
         case oilPhaseIdx: {
             if (enableDissolvedGas()) {
                 // miscible oil
-                const LhsEval& Rs = Opm::BlackOil::template getRs_<ThisType, LhsEval, FluidState>(fluidState, regionIdx);
+                const LhsEval& Rs = Opm::BlackOil::template getRs_<ThisType, FluidState, LhsEval>(fluidState, regionIdx);
                 const LhsEval& bo = oilPvt_->inverseFormationVolumeFactor(regionIdx, T, p, Rs);
 
                 return
@@ -576,7 +570,7 @@ public:
         case gasPhaseIdx: {
             if (enableVaporizedOil()) {
                 // miscible gas
-                const LhsEval& Rv = Opm::BlackOil::template getRv_<ThisType, LhsEval, FluidState>(fluidState, regionIdx);
+                const LhsEval& Rv = Opm::BlackOil::template getRv_<ThisType, FluidState, LhsEval>(fluidState, regionIdx);
                 const LhsEval& bg = gasPvt_->inverseFormationVolumeFactor(regionIdx, T, p, Rv);
 
                 return
@@ -596,7 +590,7 @@ public:
                 * waterPvt_->inverseFormationVolumeFactor(regionIdx, T, p);
         }
 
-        OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
     }
 
     /*!
@@ -660,7 +654,7 @@ public:
                 *inverseFormationVolumeFactor<FluidState, LhsEval>(fluidState, waterPhaseIdx, regionIdx);
         }
 
-        OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
     }
 
     /*!
@@ -685,7 +679,7 @@ public:
         switch (phaseIdx) {
         case oilPhaseIdx: {
             if (enableDissolvedGas()) {
-                const auto& Rs = Opm::BlackOil::template getRs_<ThisType, LhsEval, FluidState>(fluidState, regionIdx);
+                const auto& Rs = Opm::BlackOil::template getRs_<ThisType, FluidState, LhsEval>(fluidState, regionIdx);
                 if (fluidState.saturation(gasPhaseIdx) > 0.0
                     && Rs >= (1.0 - 1e-10)*oilPvt_->saturatedGasDissolutionFactor(regionIdx, Opm::scalarValue(T), Opm::scalarValue(p)))
                 {
@@ -710,7 +704,7 @@ public:
         }
         case gasPhaseIdx: {
             if (enableVaporizedOil()) {
-                const auto& Rv = Opm::BlackOil::template getRv_<ThisType, LhsEval, FluidState>(fluidState, regionIdx);
+                const auto& Rv = Opm::BlackOil::template getRv_<ThisType, FluidState, LhsEval>(fluidState, regionIdx);
                 if (fluidState.saturation(oilPhaseIdx) > 0.0
                     && Rv >= (1.0 - 1e-10)*gasPvt_->saturatedOilVaporizationFactor(regionIdx, Opm::scalarValue(T), Opm::scalarValue(p)))
                 {
@@ -735,7 +729,7 @@ public:
         }
         case waterPhaseIdx:
             return waterPvt_->inverseFormationVolumeFactor(regionIdx, T, p);
-        default: OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        default: throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
         }
     }
 
@@ -761,7 +755,7 @@ public:
         case oilPhaseIdx: return oilPvt_->saturatedInverseFormationVolumeFactor(regionIdx, T, p);
         case gasPhaseIdx: return gasPvt_->saturatedInverseFormationVolumeFactor(regionIdx, T, p);
         case waterPhaseIdx: return waterPvt_->inverseFormationVolumeFactor(regionIdx, T, p);
-        default: OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        default: throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
         }
     }
 
@@ -827,8 +821,7 @@ public:
                 return phi_gG*1e6;
 
             default:
-                OPM_THROW(std::logic_error,
-                          "Invalid component index " << compIdx);
+                throw std::logic_error("Invalid component index "+std::to_string(compIdx));
             }
 
         case oilPhaseIdx: // fugacity coefficients for all components in the oil phase
@@ -863,8 +856,7 @@ public:
                 return phi_oO*1e6;
 
             default:
-                OPM_THROW(std::logic_error,
-                          "Invalid component index " << compIdx);
+                throw std::logic_error("Invalid component index "+std::to_string(compIdx));
             }
 
         case waterPhaseIdx: // fugacity coefficients for all components in the water phase
@@ -879,16 +871,14 @@ public:
             case oilCompIdx: return 1.1e6*phi_wW;
             case gasCompIdx: return 1e6*phi_wW;
             default:
-                OPM_THROW(std::logic_error,
-                          "Invalid component index " << compIdx);
+                throw std::logic_error("Invalid component index "+std::to_string(compIdx));
             }
 
         default:
-            OPM_THROW(std::logic_error,
-                      "Invalid phase index " << phaseIdx);
+            throw std::logic_error("Invalid phase index "+std::to_string(phaseIdx));
         }
 
-        OPM_THROW(std::logic_error, "Unhandled phase or component index");
+        throw std::logic_error("Unhandled phase or component index");
     }
 
     //! \copydoc BaseFluidSystem::viscosity
@@ -906,7 +896,7 @@ public:
         switch (phaseIdx) {
         case oilPhaseIdx: {
             if (enableDissolvedGas()) {
-                const auto& Rs = Opm::BlackOil::template getRs_<ThisType, LhsEval, FluidState>(fluidState, regionIdx);
+                const auto& Rs = Opm::BlackOil::template getRs_<ThisType, FluidState, LhsEval>(fluidState, regionIdx);
                 if (fluidState.saturation(gasPhaseIdx) > 0.0
                     && Rs >= (1.0 - 1e-10)*oilPvt_->saturatedGasDissolutionFactor(regionIdx, Opm::scalarValue(T), Opm::scalarValue(p)))
                 {
@@ -932,7 +922,7 @@ public:
 
         case gasPhaseIdx: {
             if (enableVaporizedOil()) {
-                const auto& Rv = Opm::BlackOil::template getRv_<ThisType, LhsEval, FluidState>(fluidState, regionIdx);
+                const auto& Rv = Opm::BlackOil::template getRv_<ThisType, FluidState, LhsEval>(fluidState, regionIdx);
                 if (fluidState.saturation(oilPhaseIdx) > 0.0
                     && Rv >= (1.0 - 1e-10)*gasPvt_->saturatedOilVaporizationFactor(regionIdx, Opm::scalarValue(T), Opm::scalarValue(p)))
                 {
@@ -962,7 +952,7 @@ public:
             return waterPvt_->viscosity(regionIdx, T, p);
         }
 
-        OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
     }
 
     //! \copydoc BaseFluidSystem::enthalpy
@@ -976,14 +966,27 @@ public:
 
         const auto& p = Opm::decay<LhsEval>(fluidState.pressure(phaseIdx));
         const auto& T = Opm::decay<LhsEval>(fluidState.temperature(phaseIdx));
+
         switch (phaseIdx) {
-        case oilPhaseIdx: return oilPvt_->enthalpy(regionIdx, T, p, Opm::BlackOil::template getRs_<ThisType, LhsEval, FluidState>(fluidState, regionIdx));
-        case gasPhaseIdx: return gasPvt_->enthalpy(regionIdx, T, p, Opm::BlackOil::template getRv_<ThisType, LhsEval, FluidState>(fluidState, regionIdx));
-        case waterPhaseIdx: return waterPvt_->enthalpy(regionIdx, T, p);
-        default: OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        case oilPhaseIdx:
+            return
+                oilPvt_->internalEnergy(regionIdx, T, p, Opm::BlackOil::template getRs_<ThisType, FluidState, LhsEval>(fluidState, regionIdx))
+                + p/density<FluidState, LhsEval>(fluidState, phaseIdx, regionIdx);
+
+        case gasPhaseIdx:
+            return
+                gasPvt_->internalEnergy(regionIdx, T, p, Opm::BlackOil::template getRv_<ThisType, FluidState, LhsEval>(fluidState, regionIdx))
+                + p/density<FluidState, LhsEval>(fluidState, phaseIdx, regionIdx);
+
+        case waterPhaseIdx:
+            return
+                waterPvt_->internalEnergy(regionIdx, T, p)
+                + p/density<FluidState, LhsEval>(fluidState, phaseIdx, regionIdx);
+
+        default: throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
         }
 
-        OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
     }
 
     /*!
@@ -1009,7 +1012,7 @@ public:
         case oilPhaseIdx: return oilPvt_->saturatedGasDissolutionFactor(regionIdx, T, p, So, maxOilSaturation);
         case gasPhaseIdx: return gasPvt_->saturatedOilVaporizationFactor(regionIdx, T, p, So, maxOilSaturation);
         case waterPhaseIdx: return 0.0;
-        default: OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        default: throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
         }
     }
 
@@ -1036,7 +1039,7 @@ public:
         case oilPhaseIdx: return oilPvt_->saturatedGasDissolutionFactor(regionIdx, T, p);
         case gasPhaseIdx: return gasPvt_->saturatedOilVaporizationFactor(regionIdx, T, p);
         case waterPhaseIdx: return 0.0;
-        default: OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        default: throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
         }
     }
 
@@ -1082,10 +1085,10 @@ public:
         const auto& T = Opm::decay<LhsEval>(fluidState.temperature(phaseIdx));
 
         switch (phaseIdx) {
-        case oilPhaseIdx: return oilPvt_->saturationPressure(regionIdx, T, Opm::BlackOil::template getRs_<ThisType, LhsEval, FluidState>(fluidState, regionIdx));
-        case gasPhaseIdx: return gasPvt_->saturationPressure(regionIdx, T, Opm::BlackOil::template getRv_<ThisType, LhsEval, FluidState>(fluidState, regionIdx));
+        case oilPhaseIdx: return oilPvt_->saturationPressure(regionIdx, T, Opm::BlackOil::template getRs_<ThisType, FluidState, LhsEval>(fluidState, regionIdx));
+        case gasPhaseIdx: return gasPvt_->saturationPressure(regionIdx, T, Opm::BlackOil::template getRv_<ThisType, FluidState, LhsEval>(fluidState, regionIdx));
         case waterPhaseIdx: return 0.0;
-        default: OPM_THROW(std::logic_error, "Unhandled phase index " << phaseIdx);
+        default: throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
         }
     }
 

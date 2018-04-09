@@ -27,15 +27,14 @@
 #ifndef OPM_ECL_HYSTERESIS_CONFIG_HPP
 #define OPM_ECL_HYSTERESIS_CONFIG_HPP
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
 #include <opm/parser/eclipse/Deck/DeckRecord.hpp>
 #include <opm/parser/eclipse/Deck/DeckItem.hpp>
 #endif
 
-#include <opm/common/ErrorMacros.hpp>
-#include <opm/common/Exceptions.hpp>
+#include <opm/material/common/Exceptions.hpp>
 
 #include <string>
 #include <cassert>
@@ -105,7 +104,7 @@ public:
     int krHysteresisModel() const
     { return krHysteresisModel_; }
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /*!
      * \brief Reads all relevant material parameters form a cell of a parsed ECL deck.
      *
@@ -138,9 +137,8 @@ public:
             return;
 
         if (!deck.hasKeyword("EHYSTR"))
-            OPM_THROW(std::runtime_error,
-                      "Enabling hysteresis via the HYST parameter for SATOPTS requires the "
-                      "presence of the EHYSTR keyword");
+            throw std::runtime_error("Enabling hysteresis via the HYST parameter for SATOPTS requires the "
+                                     "presence of the EHYSTR keyword");
 
         const auto& ehystrKeyword = deck.getKeyword("EHYSTR");
         if (deck.hasKeyword("NOHYKR"))
@@ -148,9 +146,8 @@ public:
         else {
             krHysteresisModel_ = ehystrKeyword.getRecord(0).getItem("relative_perm_hyst").get< int >(0);
             if (krHysteresisModel_ != 0)
-                OPM_THROW(std::runtime_error,
-                          "Only the Carlson kr hystersis model (indicated by a 0 on the second item"
-                          " of the 'EHYSTR' keyword) is supported");
+                throw std::runtime_error("Only the Carlson kr hystersis model (indicated by a 0 on the second item"
+                                         " of the 'EHYSTR' keyword) is supported");
         }
 
         if (deck.hasKeyword("NOHYPC"))

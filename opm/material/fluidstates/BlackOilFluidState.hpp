@@ -31,11 +31,10 @@
 #include <opm/material/fluidsystems/BlackOilFluidSystem.hpp>
 #include <opm/material/common/HasMemberGeneratorMacros.hpp>
 
-#include <opm/common/Valgrind.hpp>
-#include <opm/common/Unused.hpp>
-#include <opm/common/ErrorMacros.hpp>
-#include <opm/common/Exceptions.hpp>
-#include <opm/common/ConditionalStorage.hpp>
+#include <opm/material/common/Valgrind.hpp>
+#include <opm/material/common/Unused.hpp>
+#include <opm/material/common/Exceptions.hpp>
+#include <opm/material/common/ConditionalStorage.hpp>
 
 namespace Opm {
 OPM_GENERATE_HAS_MEMBER(pvtRegionIndex, ) // Creates 'HasMember_pvtRegionIndex<T>'.
@@ -50,29 +49,30 @@ unsigned getPvtRegionIndex_(typename std::enable_if<!HasMember_pvtRegionIndex<Fl
                                                     const FluidState&>::type fluidState OPM_UNUSED)
 { return 0; }
 
-OPM_GENERATE_HAS_MEMBER(invB, ) // Creates 'HasMember_invB<T>'.
+OPM_GENERATE_HAS_MEMBER(invB, /*phaseIdx=*/0) // Creates 'HasMember_invB<T>'.
 
-template <class FluidState, class FluidSystem, class LhsEval>
-LhsEval getInvB_(typename std::enable_if<HasMember_pvtRegionIndex<FluidState>::value,
-                                         const FluidState&>::type fluidState,
-                 unsigned phaseIdx)
+template <class FluidSystem, class FluidState, class LhsEval>
+auto getInvB_(typename std::enable_if<HasMember_invB<FluidState>::value,
+                                      const FluidState&>::type fluidState,
+              unsigned phaseIdx,
+              unsigned pvtRegionIdx OPM_UNUSED)
+    -> decltype(Opm::decay<LhsEval>(fluidState.invB(phaseIdx)))
 { return Opm::decay<LhsEval>(fluidState.invB(phaseIdx)); }
 
-template <class FluidState, class FluidSystem, class LhsEval>
-LhsEval getInvB_(typename std::enable_if<!HasMember_pvtRegionIndex<FluidState>::value,
+template <class FluidSystem, class FluidState, class LhsEval>
+LhsEval getInvB_(typename std::enable_if<!HasMember_invB<FluidState>::value,
                                          const FluidState&>::type fluidState,
-                 unsigned phaseIdx)
+                 unsigned phaseIdx,
+                 unsigned pvtRegionIdx)
 {
     const auto& rho = fluidState.density(phaseIdx);
     const auto& Xsolvent =
-        fluidState.massFraction(phaseIdx, FluidSystem::solventComponentIndx(phaseIdx));
+        fluidState.massFraction(phaseIdx, FluidSystem::solventComponentIndex(phaseIdx));
 
-    unsigned pvtRegionIdx = getPvtRegionIndex_(fluidState);
     return
         Opm::decay<LhsEval>(rho)
         *Opm::decay<LhsEval>(Xsolvent)
         /FluidSystem::referenceDensity(phaseIdx, pvtRegionIdx);
-
 }
 
 /*!
@@ -142,9 +142,10 @@ public:
         if (enableTemperature || enableEnergy)
             setTemperature(fs.temperature(/*phaseIdx=*/0));
 
-        setPvtRegionIndex(getPvtRegionIndex_<FluidState>(fs));
-        setRs(Opm::BlackOil::getRs_<FluidSystem, Scalar, FluidState>(fs, /*regionIdx=*/0));
-        setRv(Opm::BlackOil::getRv_<FluidSystem, Scalar, FluidState>(fs, /*regionIdx=*/0));
+        unsigned pvtRegionIdx = getPvtRegionIndex_<FluidState>(fs);
+        setPvtRegionIndex(pvtRegionIdx);
+        setRs(Opm::BlackOil::getRs_<FluidSystem, FluidState, Scalar>(fs, pvtRegionIdx));
+        setRv(Opm::BlackOil::getRv_<FluidSystem, FluidState, Scalar>(fs, pvtRegionIdx));
 
         for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
             setSaturation(phaseIdx, fs.saturation(phaseIdx));
@@ -154,7 +155,7 @@ public:
             if (enableEnergy)
                 setEnthalpy(phaseIdx, fs.enthalpy(phaseIdx));
 
-            setInvB(phaseIdx, getInvB_<FluidState, FluidSystem, Scalar>(fs, phaseIdx));
+            setInvB(phaseIdx, getInvB_<FluidSystem, FluidState, Scalar>(fs, phaseIdx, pvtRegionIdx));
         }
     }
 
@@ -390,8 +391,7 @@ public:
             break;
         }
 
-        OPM_THROW(std::logic_error,
-                  "Invalid phase or component index!");
+        throw std::logic_error("Invalid phase or component index!");
     }
 
     /*!
@@ -432,8 +432,7 @@ public:
             break;
         }
 
-        OPM_THROW(std::logic_error,
-                  "Invalid phase or component index!");
+        throw std::logic_error("Invalid phase or component index!");
     }
 
     /*!

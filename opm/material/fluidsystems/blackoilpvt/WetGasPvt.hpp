@@ -32,7 +32,7 @@
 #include <opm/material/common/UniformXTabulated2DFunction.hpp>
 #include <opm/material/common/Tabulated1DFunction.hpp>
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/EclipseState/Tables/TableManager.hpp>
 #endif
@@ -56,7 +56,7 @@ public:
         vapPar1_ = 0.0;
     }
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /*!
      * \brief Initialize the parameters for wet gas using an ECL deck.
      *
@@ -154,8 +154,7 @@ public:
                 }
 
                 if (masterTableIdx >= saturatedTable.numRows())
-                    OPM_THROW(std::runtime_error,
-                              "PVTG tables are invalid: The last table must exhibit at least one "
+                    throw std::runtime_error("PVTG tables are invalid: The last table must exhibit at least one "
                               "entry for undersaturated gas!");
 
 
@@ -229,7 +228,7 @@ private:
     }
 
 public:
-#endif // HAVE_OPM_PARSER
+#endif // HAVE_ECL_INPUT
 
     void setNumRegions(size_t numRegions)
     {
@@ -442,13 +441,12 @@ public:
      * \brief Returns the specific enthalpy [J/kg] of gas given a set of parameters.
      */
     template <class Evaluation>
-    Evaluation enthalpy(unsigned regionIdx OPM_UNUSED,
+    Evaluation internalEnergy(unsigned regionIdx OPM_UNUSED,
                         const Evaluation& temperature OPM_UNUSED,
                         const Evaluation& pressure OPM_UNUSED,
                         const Evaluation& Rv OPM_UNUSED) const
     {
-        OPM_THROW(std::runtime_error,
-                  "Requested the enthalpy of gas but the thermal option is not enabled");
+        throw std::runtime_error("Requested the enthalpy of gas but the thermal option is not enabled");
     }
 
     /*!
@@ -598,8 +596,10 @@ public:
         errlog << "Finding saturation pressure did not converge:"
                << " pSat = " << pSat
                << ", Rv = " << Rv;
+#if HAVE_OPM_COMMON
         OpmLog::debug("Wet gas saturation pressure", errlog.str());
-        OPM_THROW_NOLOG(NumericalProblem, errlog.str());
+#endif
+        throw NumericalIssue(errlog.str());
     }
 
 private:

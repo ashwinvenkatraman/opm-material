@@ -31,7 +31,7 @@
 #include "WetGasPvt.hpp"
 #include "GasPvtThermal.hpp"
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
@@ -57,7 +57,7 @@ namespace Opm {
         break;                                                          \
     }                                                                   \
     case NoGasPvt:                                                      \
-        OPM_THROW(std::logic_error, "Not implemented: Gas PVT of this deck!"); \
+        throw std::logic_error("Not implemented: Gas PVT of this deck!"); \
     }
 
 
@@ -109,7 +109,7 @@ public:
         }
     }
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /*!
      * \brief Initialize the parameters for gas using an ECL deck.
      *
@@ -130,7 +130,7 @@ public:
 
         OPM_GAS_PVT_MULTIPLEXER_CALL(pvtImpl.initFromDeck(deck, eclState));
     }
-#endif // HAVE_OPM_PARSER
+#endif // HAVE_ECL_INPUT
 
     void setApproach(GasPvtApproach gasPvtAppr)
     {
@@ -148,7 +148,7 @@ public:
             break;
 
         case NoGasPvt:
-            OPM_THROW(std::logic_error, "Not implemented: Gas PVT of this deck!");
+            throw std::logic_error("Not implemented: Gas PVT of this deck!");
         }
 
         gasPvtApproach_ = gasPvtAppr;
@@ -167,11 +167,11 @@ public:
      * \brief Returns the specific enthalpy [J/kg] of gas given a set of parameters.
      */
     template <class Evaluation>
-    Evaluation enthalpy(unsigned regionIdx,
+    Evaluation internalEnergy(unsigned regionIdx,
                         const Evaluation& temperature,
                         const Evaluation& pressure,
                         const Evaluation& Rv) const
-    { OPM_GAS_PVT_MULTIPLEXER_CALL(return pvtImpl.enthalpy(regionIdx, temperature, pressure, Rv)); return 0; }
+    { OPM_GAS_PVT_MULTIPLEXER_CALL(return pvtImpl.internalEnergy(regionIdx, temperature, pressure, Rv)); return 0; }
 
     /*!
      * \brief Returns the dynamic viscosity [Pa s] of the fluid phase given a set of parameters.

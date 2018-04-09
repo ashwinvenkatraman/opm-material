@@ -29,7 +29,7 @@
 
 #include <opm/material/common/Tabulated1DFunction.hpp>
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
 #include <opm/parser/eclipse/Deck/DeckRecord.hpp>
@@ -51,7 +51,7 @@ class ConstantCompressibilityWaterPvt
     typedef std::vector<std::pair<Scalar, Scalar> > SamplingPoints;
 
 public:
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /*!
      * \brief Sets the pressure-dependent water viscosity and density
      *        using a table stemming from the Eclipse PVTW keyword.
@@ -163,12 +163,11 @@ public:
      * \brief Returns the specific enthalpy [J/kg] of water given a set of parameters.
      */
     template <class Evaluation>
-    Evaluation enthalpy(unsigned regionIdx OPM_UNUSED,
+    Evaluation internalEnergy(unsigned regionIdx OPM_UNUSED,
                         const Evaluation& temperature OPM_UNUSED,
                         const Evaluation& pressure OPM_UNUSED) const
     {
-        OPM_THROW(std::runtime_error,
-                  "Requested the enthalpy of water but the thermal option is not enabled");
+        throw std::runtime_error("Requested the enthalpy of water but the thermal option is not enabled");
     }
 
     /*!

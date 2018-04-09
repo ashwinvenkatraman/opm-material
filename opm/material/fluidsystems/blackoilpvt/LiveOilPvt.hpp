@@ -33,11 +33,15 @@
 #include <opm/material/common/UniformXTabulated2DFunction.hpp>
 #include <opm/material/common/Tabulated1DFunction.hpp>
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/EclipseState/Tables/SimpleTable.hpp>
 #include <opm/parser/eclipse/EclipseState/Tables/TableManager.hpp>
+#endif
+
+#if HAVE_OPM_COMMON
+#include <opm/common/OpmLog/OpmLog.hpp>
 #endif
 
 namespace Opm {
@@ -58,7 +62,7 @@ public:
         vapPar2_ = 0.0;
     }
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /*!
      * \brief Initialize the oil parameters via the data specified by the PVTO ECL keyword.
      */
@@ -155,9 +159,8 @@ public:
                 }
 
                 if (masterTableIdx >= saturatedTable.numRows())
-                    OPM_THROW(std::runtime_error,
-                              "PVTO tables are invalid: The last table must exhibit at least one "
-                              "entry for undersaturated oil!");
+                    throw std::runtime_error("PVTO tables are invalid: The last table must exhibit at least one "
+                                             "entry for undersaturated oil!");
 
                 // extend the current table using the master table.
                 extendPvtoTable_(regionIdx,
@@ -229,7 +232,7 @@ private:
     }
 
 public:
-#endif // HAVE_OPM_PARSER
+#endif // HAVE_ECL_INPUT
 
     void setNumRegions(size_t numRegions)
     {
@@ -412,13 +415,12 @@ public:
      * \brief Returns the specific enthalpy [J/kg] of oil given a set of parameters.
      */
     template <class Evaluation>
-    Evaluation enthalpy(unsigned regionIdx OPM_UNUSED,
+    Evaluation internalEnergy(unsigned regionIdx OPM_UNUSED,
                         const Evaluation& temperature OPM_UNUSED,
                         const Evaluation& pressure OPM_UNUSED,
                         const Evaluation& Rs OPM_UNUSED) const
     {
-        OPM_THROW(std::runtime_error,
-                  "Requested the enthalpy of oil but the thermal option is not enabled");
+        throw std::runtime_error("Requested the enthalpy of oil but the thermal option is not enabled");
     }
 
     /*!
@@ -570,8 +572,10 @@ public:
         errlog << "Finding saturation pressure did not converge:"
                << " pSat = " << pSat
                << ", Rs = " << Rs;
+#if HAVE_OPM_COMMON
         OpmLog::debug("Live oil saturation pressure", errlog.str());
-        OPM_THROW_NOLOG(NumericalProblem, errlog.str());
+#endif
+        throw NumericalIssue(errlog.str());
     }
 
 private:

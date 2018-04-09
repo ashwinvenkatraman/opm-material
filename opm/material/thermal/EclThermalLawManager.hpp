@@ -24,8 +24,8 @@
  * \file
  * \copydoc Opm::EclThermalLawManager
  */
-#if ! HAVE_OPM_PARSER
-#error "The opm-parser module is required to use the ECL thermal law manager!"
+#if ! HAVE_ECL_INPUT
+#error "Eclipse input support in opm-common is required to use the ECL thermal law manager!"
 #endif
 
 #ifndef OPM_ECL_THERMAL_LAW_MANAGER_HPP
@@ -37,8 +37,7 @@
 #include "EclThermalConductionLawMultiplexer.hpp"
 #include "EclThermalConductionLawMultiplexerParams.hpp"
 
-#include <opm/common/Exceptions.hpp>
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/material/common/Exceptions.hpp>
 
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/EclipseState/Tables/TableManager.hpp>
@@ -112,9 +111,8 @@ public:
             return solidEnergyLawParams_[0];
 
         default:
-            OPM_THROW(std::runtime_error,
-                      "Attempting to retrieve solid energy storage parameters without "
-                      "a known approach being defined by the deck.");
+            throw std::runtime_error("Attempting to retrieve solid energy storage parameters "
+                                     "without a known approach being defined by the deck.");
         }
     }
 
@@ -130,9 +128,8 @@ public:
             return thermalConductionLawParams_[0];
 
         default:
-            OPM_THROW(std::runtime_error,
-                      "Attempting to retrieve thermal conduction parameters without "
-                      "a known approach being defined by the deck.");
+            throw std::runtime_error("Attempting to retrieve thermal conduction parameters without "
+                                     "a known approach being defined by the deck.");
         }
     }
 
@@ -207,8 +204,8 @@ private:
 
             auto& specrockParams = multiplexerParams.template getRealParams<SolidEnergyLawParams::specrockApproach>();
             const auto& temperatureColumn = specrockTable.getColumn("TEMPERATURE");
-            const auto& cpRockColumn = specrockTable.getColumn("CP_ROCK");
-            specrockParams.setHeatCapacities(temperatureColumn, cpRockColumn);
+            const auto& cvRockColumn = specrockTable.getColumn("CV_ROCK");
+            specrockParams.setHeatCapacities(temperatureColumn, cvRockColumn);
             specrockParams.finalize();
 
             multiplexerParams.finalize();

@@ -62,9 +62,7 @@ namespace FluidSystemsTest {
 #include <opm/material/components/co2tables.inc>
 } }
 
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
 #include <dune/common/parallel/mpihelper.hh>
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 // check that the blackoil fluid system implements all non-standard functions
 template <class Evaluation, class FluidSystem>
@@ -73,7 +71,7 @@ void ensureBlackoilApi()
     // here we don't want to call these methods at runtime, we just want to make sure
     // that they compile
     while (false) {
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
         Opm::Deck deck;
         Opm::EclipseState eclState(deck);
         FluidSystem::initFromDeck(deck, eclState);

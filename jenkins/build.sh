@@ -1,14 +1,12 @@
 #!/bin/bash
 
 declare -a upstreams
-upstreams=(opm-common
-           libecl
-           opm-parser)
+upstreams=(libecl
+           opm-common)
 
 declare -A upstreamRev
-upstreamRev[opm-common]=master
 upstreamRev[libecl]=master
-upstreamRev[opm-parser]=master
+upstreamRev[opm-common]=master
 
 if grep -q "opm-common=" <<< $ghprbCommentBody
 then
@@ -17,16 +15,12 @@ fi
 
 # Downstream revisions
 declare -a downstreams
-downstreams=(opm-output
-             opm-grid
-             opm-core
+downstreams=(opm-grid
              ewoms
              opm-simulators
              opm-upscaling)
 
 declare -A downstreamRev
-downstreamRev[opm-output]=master
-downstreamRev[opm-core]=master
 downstreamRev[opm-grid]=master
 downstreamRev[ewoms]=master
 downstreamRev[opm-simulators]=master
@@ -51,7 +45,7 @@ printHeader opm-material
 # Setup opm-data
 if grep -q "with downstreams" <<< $ghprbCommentBody
 then
-  source $WORKSPACE/deps/opm-common/jenkins/setup-opm-data.sh
+  source $WORKSPACE/deps/opm-common/jenkins/setup-opm-tests.sh
 fi
 
 build_module_full opm-material

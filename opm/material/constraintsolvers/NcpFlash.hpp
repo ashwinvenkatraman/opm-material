@@ -33,15 +33,13 @@
 #include <opm/material/densead/Evaluation.hpp>
 #include <opm/material/densead/Math.hpp>
 #include <opm/material/common/MathToolbox.hpp>
-#include <opm/common/Valgrind.hpp>
+#include <opm/material/common/Valgrind.hpp>
 
-#include <opm/common/ErrorMacros.hpp>
-#include <opm/common/Exceptions.hpp>
+#include <opm/material/common/Exceptions.hpp>
 
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <dune/common/version.hh>
 
 #include <limits>
 #include <iostream>
@@ -62,26 +60,26 @@ namespace Opm {
  * This sums up to M*(N + 2). On the equations side of things,
  * we have:
  *
- * - (M - 1)*N equation stemming from the fact that the
- *   fugacity of any component is the same in all phases
- * - 1 equation from the closure condition of all saturations
- *   (they sum up to 1)
- * - M - 1 constraints from the capillary pressures
- *   \f$(-> p_\beta = p_\alpha + p_c\alpha,\beta)\f$
+ * - (M - 1)*N equations stemming from the fact that the
+ *   fugacity of any component is the same in all phases:
+ *   \f$\forall \alpha, \beta, \kappa: f_\alpha^\kappa = f_\beta^\kappa\f$
+ * - 1 equation from the closure condition of all saturations:
+ *   \f$\sum_\alpha S_\alpha = 1\f$
+ * - M - 1 constraints from the capillary pressures:
+ *   \f$p_\beta = p_\alpha + p_c\alpha,\beta\f$
  * - N constraints from the fact that the total mass of each
- *   component is given \f$(-> sum_\alpha rhoMolar_\alpha *
- *   x_\alpha^\kappa = const)\f$
- * - M model constraints. Here we use the NCP constraints
- *   (-> 0 = min \f$ {S_\alpha, 1 - \sum_\kappa x_\alpha^\kappa}\f$)
+ *   component is given:
+ *   \f$sum_\alpha rhoMolar_\alpha x_\alpha^\kappa = const\f$
+ * - M model constraints. Here, we use the NCP constraints:
+ *   \f$ 0 = \mathrm{min}{S_\alpha, 1 - \sum_\kappa x_\alpha^\kappa}\f$
  *
- * this also sums up to M*(N + 2).
+ * This also sums up to M*(N + 2).
  *
- * We use the following catches: Capillary pressures are taken into
- * account explicitly, so that only the pressure of the first phase is
- * solved implicitly, also the closure condition for the saturations
- * is taken into account explicitly, which means that we don't need to
- * implicitly solve for the last saturation. These two measures reduce
- * the number of unknowns to M*(N + 1), namely:
+ * The following assumptions apply: Capillary pressures are taken into account
+ * explicitly, so only the pressure of the first phase is implicitly solved for. Also,
+ * the closure condition for the saturations is taken into account explicitly, i.e., we
+ * don't need to implicitly solve for the last saturation. These two assumptions reduce
+ * the number of unknowns to the following M*(N + 1):
  *
  * - 1 pressure
  * - M - 1 saturations
@@ -164,7 +162,9 @@ public:
         typedef Dune::FieldVector<FlashEval, numEq> FlashDefectVector;
         typedef Opm::CompositionalFluidState<FlashEval, FluidSystem, /*energy=*/false> FlashFluidState;
 
+#if ! DUNE_VERSION_NEWER(DUNE_COMMON, 2,7)
         Dune::FMatrixPrecision<InputEval>::set_singular_limit(1e-35);
+#endif
 
         if (tolerance <= 0)
             tolerance = std::min<Scalar>(1e-3,
@@ -220,7 +220,7 @@ public:
             deltaX = 0.0;
             try { J.solve(deltaX, b); }
             catch (const Dune::FMatrixError& e) {
-                throw Opm::NumericalProblem(e.what());
+                throw Opm::NumericalIssue(e.what());
             }
             Valgrind::CheckDefined(deltaX);
 
@@ -233,10 +233,11 @@ public:
             }
         }
 
-        OPM_THROW(NumericalProblem,
-                  "NcpFlash solver failed: "
-                  "{c_alpha^kappa} = {" << globalMolarities << "}, "
-                  << "T = " << fluidState.temperature(/*phaseIdx=*/0));
+        std::ostringstream oss;
+        oss << "NcpFlash solver failed:"
+            << " {c_alpha^kappa} = {" << globalMolarities << "}, "
+            << " T = " << fluidState.temperature(/*phaseIdx=*/0);
+        throw NumericalIssue(oss.str());
     }
 
     /*!

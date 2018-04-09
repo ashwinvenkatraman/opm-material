@@ -29,18 +29,12 @@
 
 #include <opm/material/common/MathToolbox.hpp>
 
-
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/material/common/Exceptions.hpp>
+#include <opm/material/common/Valgrind.hpp>
 
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>
-
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
-
-
-#include <opm/common/Exceptions.hpp>
-#include <opm/common/ErrorMacros.hpp>
-#include <opm/common/Valgrind.hpp>
+#include <dune/common/version.hh>
 
 namespace Opm {
 
@@ -257,12 +251,16 @@ public:
 
         // solve for all mole fractions
         try {
-            Dune::FMatrixPrecision<Scalar>::set_singular_limit(1e-50);
+#if ! DUNE_VERSION_NEWER(DUNE_COMMON, 2,7)
+            static constexpr Scalar eps = std::numeric_limits<Scalar>::min()*1000.0;
+            Dune::FMatrixPrecision<Scalar>::set_singular_limit(eps);
+#endif
             M.solve(x, b);
         }
         catch (const Dune::FMatrixError& e) {
-            OPM_THROW(NumericalProblem,
-                      "Numerical problem in MiscibleMultiPhaseComposition::solve(): " << e.what() << "; M="<<M);
+            std::ostringstream oss;
+            oss << "Numerical problem in MiscibleMultiPhaseComposition::solve(): " << e.what() << "; M="<<M;
+            throw NumericalIssue(oss.str());
         }
         catch (...) {
             throw;

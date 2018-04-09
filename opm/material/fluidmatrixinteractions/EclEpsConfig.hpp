@@ -27,7 +27,7 @@
 #ifndef OPM_ECL_EPS_CONFIG_HPP
 #define OPM_ECL_EPS_CONFIG_HPP
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/Deck/DeckItem.hpp>
 #include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
@@ -35,9 +35,8 @@
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #endif
 
-#include <opm/common/ErrorMacros.hpp>
-#include <opm/common/Exceptions.hpp>
-#include <opm/common/Unused.hpp>
+#include <opm/material/common/Exceptions.hpp>
+#include <opm/material/common/Unused.hpp>
 
 #include <string>
 #include <cassert>
@@ -156,7 +155,7 @@ public:
     bool enableLeverettScaling() const
     { return enableLeverettScaling_; }
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /*!
      * \brief Reads all relevant material parameters form a cell of a parsed ECL deck.
      *
@@ -201,10 +200,9 @@ public:
             }
 
             if (enablePcScaling_ && enableLeverettScaling_)
-                OPM_THROW(std::runtime_error,
-                          "Capillary pressure scaling and the Leverett scaling function are "
-                          "mutually exclusive: The deck contains the PCW property and the "
-                          "JFUNC keyword applies to the water phase.");
+                throw std::runtime_error("Capillary pressure scaling and the Leverett scaling function are "
+                                         "mutually exclusive: The deck contains the PCW property and the "
+                                         "JFUNC keyword applies to the water phase.");
         }
         else {
             assert(twoPhaseSystemType == EclGasOilSystem);
@@ -219,10 +217,9 @@ public:
             }
 
             if (enablePcScaling_ && enableLeverettScaling_)
-                OPM_THROW(std::runtime_error,
-                          "Capillary pressure scaling and the Leverett scaling function are "
-                          "mutually exclusive: The deck contains the PCG property and the "
-                          "JFUNC keyword applies to the gas phase.");
+                throw std::runtime_error("Capillary pressure scaling and the Leverett scaling function are "
+                                         "mutually exclusive: The deck contains the PCG property and the "
+                                         "JFUNC keyword applies to the gas phase.");
         }
 
         // check if we are supposed to scale the Y axis of the wetting phase relperm

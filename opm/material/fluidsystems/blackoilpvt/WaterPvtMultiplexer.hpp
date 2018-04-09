@@ -43,7 +43,7 @@
         break;                                                          \
     }                                                                   \
     case NoWaterPvt:                                                    \
-        OPM_THROW(std::logic_error, "Not implemented: Water PVT of this deck!"); \
+        throw std::logic_error("Not implemented: Water PVT of this deck!"); \
     }
 
 namespace Opm {
@@ -84,7 +84,7 @@ public:
         }
     }
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /*!
      * \brief Initialize the parameters for water using an ECL deck.
      *
@@ -103,7 +103,7 @@ public:
 
         OPM_WATER_PVT_MULTIPLEXER_CALL(pvtImpl.initFromDeck(deck, eclState));
     }
-#endif // HAVE_OPM_PARSER
+#endif // HAVE_ECL_INPUT
 
     void initEnd()
     { OPM_WATER_PVT_MULTIPLEXER_CALL(pvtImpl.initEnd()); }
@@ -118,10 +118,10 @@ public:
      * \brief Returns the specific enthalpy [J/kg] of gas given a set of parameters.
      */
     template <class Evaluation>
-    Evaluation enthalpy(unsigned regionIdx,
+    Evaluation internalEnergy(unsigned regionIdx,
                         const Evaluation& temperature,
                         const Evaluation& pressure) const
-    { OPM_WATER_PVT_MULTIPLEXER_CALL(return pvtImpl.enthalpy(regionIdx, temperature, pressure)); return 0; }
+    { OPM_WATER_PVT_MULTIPLEXER_CALL(return pvtImpl.internalEnergy(regionIdx, temperature, pressure)); return 0; }
 
     /*!
      * \brief Returns the dynamic viscosity [Pa s] of the fluid phase given a set of parameters.
@@ -153,7 +153,7 @@ public:
             break;
 
         case NoWaterPvt:
-            OPM_THROW(std::logic_error, "Not implemented: Water PVT of this deck!");
+            throw std::logic_error("Not implemented: Water PVT of this deck!");
         }
 
         approach_ = appr;

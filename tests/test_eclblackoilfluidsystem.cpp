@@ -29,25 +29,23 @@
  */
 #include "config.h"
 
-#if !HAVE_OPM_PARSER
-#error "The test for the black oil fluid system classes requires the opm-parser module"
+#if !HAVE_ECL_INPUT
+#error "The test for the black oil fluid system classes requires ecl input support in opm-common"
 #endif
 
 #include <opm/material/fluidsystems/BlackOilFluidSystem.hpp>
 #include <opm/material/fluidstates/BlackOilFluidState.hpp>
 #include <opm/material/densead/Evaluation.hpp>
 
-#include <opm/common/Valgrind.hpp>
-#include <opm/common/Unused.hpp>
+#include <opm/material/common/Valgrind.hpp>
+#include <opm/material/common/Unused.hpp>
 
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
 #include <dune/common/parallel/mpihelper.hh>
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 #include <type_traits>
 #include <cmath>

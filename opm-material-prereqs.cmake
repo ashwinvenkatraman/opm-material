@@ -4,6 +4,7 @@ set (opm-material_CONFIG_VAR
   HAVE_TYPE_TRAITS
   HAVE_VALGRIND
   HAVE_FINAL
+  HAVE_ECL_INPUT
   )
 
 # dependencies
@@ -13,7 +14,7 @@ set (opm-material_DEPS
   # compile with C++0x/11 support if available
   "CXX11Features REQUIRED"
   # prerequisite OPM modules
-  "opm-parser"
+  "ecl"
   "opm-common REQUIRED"
   # DUNE dependency
   "dune-common REQUIRED"
